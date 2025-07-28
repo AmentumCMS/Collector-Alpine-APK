@@ -51,6 +51,7 @@ jobs:
 
       - name: Run Collection for ${{ vars.COLLECTOR }}
         run: |
+          mkdir -p ${{ env.WORKDIR }}
           cd ${{ env.WORKDIR }}
           echo "Collecting ${{ vars.COLLECTOR }} APKs"
           rsync-alpine.sh ${{ vars.COLLECTOR }}

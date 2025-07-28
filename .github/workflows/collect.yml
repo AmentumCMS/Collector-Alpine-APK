@@ -40,7 +40,7 @@ jobs:
     runs-on: ubuntu-24.04
     env:
       GH_TOKEN: ${{ github.token }}
-      WORKDIR: /mnt
+      WORKDIR: /mnt/${{vars.COLLECTOR }}
 
     steps:
       - name: Check out repository code
@@ -58,6 +58,7 @@ jobs:
 
       - name: Run Collection for ${{ vars.COLLECTOR }}
         run: |
+          mkdir -p ${{ env.WORKDIR }}
           cd ${{ env.WORKDIR }}
           echo "Collecting ${{ vars.COLLECTOR }} APKs"
           rsync-alpine.sh ${{ vars.COLLECTOR }}

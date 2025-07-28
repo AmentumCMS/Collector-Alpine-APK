@@ -44,12 +44,6 @@ jobs:
       - name: Check out repository code
         uses: actions/checkout@v4
 
-      - name: Show Files
-        run: ls -Alht
-
-      - name: List disks
-        run: df -h ${{ env.WORKDIR }}
-
       - name: Setup Environment
         run: |
           echo "PATH=$PATH:$PWD/scripts" >> $GITHUB_ENV
@@ -61,6 +55,12 @@ jobs:
           echo "Collecting ${{ vars.COLLECTOR }} APKs"
           rsync-alpine.sh ${{ vars.COLLECTOR }}
           echo "Logfile: $(ls -1Ssh *.log)"
+
+      - name: Show Files
+        run: ls -Alht ${{ env.WORKDIR }}
+
+      - name: List disks
+        run: df -h ${{ env.WORKDIR }}
 
       - name: Upload reposync log
         uses: actions/upload-artifact@v4

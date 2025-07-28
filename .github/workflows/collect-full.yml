@@ -42,12 +42,13 @@ jobs:
       - name: Setup Environment
         run: |
           echo "PATH=$PATH:$PWD/scripts" >> $GITHUB_ENV
+          sudo apt-get update -y
+          sudo apt-get install -y mkisofs isomd5sum wget
 
       - name: Run Collection for ${{ vars.COLLECTOR }}
         run: |
           sudo mkdir -p ${{ env.WORKDIR }}
           sudo chown -R $USER ${{ env.WORKDIR }}
-          cd ${{ env.WORKDIR }}
           echo "Collecting ${{ vars.COLLECTOR }} APKs"
           # Rsync only the latest version and selected repos/arch
           rsync -av \
@@ -59,7 +60,7 @@ jobs:
             --timeout=600 \
             --include "v3.21/" \
             --include "v3.21/main/" \
-            --include "v3.21/main/x86_64/" \
+            --include "v3.21/main/x86_64/***" \
             --exclude "*" \
             rsync://rsync.alpinelinux.org/alpine ${{ env.WORKDIR }}
 

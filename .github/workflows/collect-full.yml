@@ -47,7 +47,7 @@ jobs:
 
       - name: Run Collection for ${{ vars.COLLECTOR }}
         run: |
-          sudo mkdir -p ${{ env.WORKDIR }}
+          sudo mkdir -p ${{ env.WORKDIR }}/${{ vars.COLLECTOR }}
           sudo chown -R $USER ${{ env.WORKDIR }}
           echo "Collecting ${{ vars.COLLECTOR }} APKs"
           # Rsync only the latest version and selected repos/arch
@@ -62,7 +62,7 @@ jobs:
             --include "v3.21/main/" \
             --include "v3.21/main/x86_64/***" \
             --exclude "*" \
-            rsync://rsync.alpinelinux.org/alpine ${{ env.WORKDIR }}
+            rsync://rsync.alpinelinux.org/alpine ${{ env.WORKDIR }}/${{ vars.COLLECTOR }}
 
       - name: Show Files
         run: ls -Alht ${{ env.WORKDIR }}
@@ -87,49 +87,46 @@ jobs:
 
       - name: ISO Table of contents
         run: |
-          tree ${{ env.WORKDIR }} \
-            | tee ${{ env.WORKDIR }}/${{ vars.COLLECTOR}}-${{ needs.Date.outputs.Date }}.iso.txt
+          cd ${{ env.WORKDIR }}
+          tree ${{ vars.COLLECTOR }} \
+          | tee ${{ vars.COLLECTOR}}-${{ needs.Date.outputs.Date }}.iso.txt
+          cp -v ${{ vars.COLLECTOR}}-${{ needs.Date.outputs.Date }}.iso.txt ${{ vars.COLLECTOR }}
 
       - name: Upload ISO ToC artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso.txt
-          path: ${{ env.WORKDIR }}/${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso.txt
+          path: ${{ env.WORKDIR }}/${{ vars.COLLECTOR }}/${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso.txt
           if-no-files-found: error
 
       - name: Make ${{ vars.COLLECTOR }} ISO
         run: |
           echo "Making ISO of ${{ vars.COLLECTOR }}"
+          cd ${{ env.WORKDIR }}
           mkisofs -J -R -v -T -l \
             -V ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }} \
             -A ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }} \
             -o ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso \
-            ${{ env.WORKDIR }}
+            ${{ vars.COLLECTOR }}
 
       - name: Implant MD5 sum into ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso
-        run: implantisomd5 /mnt/${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso
+        run: implantisomd5 ${{ env.WORKDIR }}/${{ vars.COLLECTOR }}/${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso
 
       - name: Generate ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso Hash
         run: |
           cd ${{ env.WORKDIR }}
-          sha256sum -b ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso | tee \
-            ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso.sha
+          sha256sum -b ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso \
+          | tee ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso.sha
 
       - name: Show ISO & Hash
         run: ls -sS1h ${{ env.WORKDIR }}/*.iso*
 
-      - name: Upload ISO
+      - name: Upload ISO files
         uses: actions/upload-artifact@v4
         with:
           name: ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso
-          path: ${{ env.WORKDIR }}/${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso
+          path: ${{ env.WORKDIR }}/${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso*
           if-no-files-found: error
-
-      - name: Upload ISO Hash
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso.sha
-          path: ${{ env.WORKDIR }}/${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso.sha
 
       # Cleanup
       - name: Clean up
@@ -188,7 +185,7 @@ jobs:
   #         make_latest: true
   #         files: |
   #           /mnt/*.iso.*
-# Upload to Sharepoint Job
+  # Upload to Sharepoint Job
   Sharepoint:
     runs-on: ubuntu-24.04
     needs: [Date, Collect-APKs]

@@ -52,11 +52,9 @@ jobs:
         run: |
           sudo mkdir -p ${{ env.WORKDIR }}
           sudo chown -R $USER ${{ env.WORKDIR }}
-          cd ${{ env.WORKDIR }}
           echo "Collecting ${{ vars.COLLECTOR }} APKs"
           # Rsync only the latest version and selected repos/arch
-          rsync \
-            --archive \
+          rsync -av \
             --update \
             --hard-links \
             --delete \
@@ -67,7 +65,7 @@ jobs:
             --include "v3.21/main/" \
             --include "v3.21/main/x86_64/" \
             --exclude "*" \
-            rsync://rsync.alpinelinux.org/alpine/ .
+            rsync://rsync.alpinelinux.org/alpine ${{ env.WORKDIR }}
 
       - name: Show Files
         run: ls -Alht ${{ env.WORKDIR }}

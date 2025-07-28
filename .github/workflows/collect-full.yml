@@ -1,5 +1,5 @@
-name: RHEL-RPM-Collection (Full)
-run-name: ${{ github.actor }} is Collecting All the RPMS 🚀
+name: Alpine-APK-Collection (Full)
+run-name: ${{ github.actor }} is Collecting New RPMs for ${{ github.ref_name }} 🚀
 on:
   workflow_dispatch:
 
@@ -28,40 +28,14 @@ jobs:
           echo -e "\nPermissions on /mnt"
           ls -alht /mnt
 
-  Collect-RPMs:
+  Collect-APKs:
     needs: [Date]
-    runs-on: self-hosted
-    strategy:
-      max-parallel: 1
-      matrix:
-        os: [8, 9]
-        repo:
-          [
-            rhel-matrix-for-x86_64-baseos-rpms,
-            rhel-matrix-for-x86_64-appstream-rpms,
-            codeready-builder-for-rhel-matrix-x86_64-rpms,
-            epel,
-            docker-ce-stable,
-            hashicorp,
-            # microsoft-prod,
-            microsoft-edge,
-          ]
-    # container:
-    #   image: docker.io/redhat/ubi${{ matrix.os }}
-    #   env:
-    #     GH_TOKEN: ${{ github.token }}
-    # volumes:
-    #   - $PWD:/mnt
-    # credentials:
-    #   username: ${{ secrets.REGISTRY_USER }}
-    #   password: ${{ secrets.REGISTRY_TOKEN }}
-    # ports:
-    #   - 80
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+      WORKDIR: /mnt
 
     steps:
-      # - name: Check for dockerenv file
-      #   run: (ls /.dockerenv && echo Found dockerenv) || (echo No dockerenv)
-
       - name: Check out repository code
         uses: actions/checkout@v4
 
@@ -69,116 +43,91 @@ jobs:
         run: ls -Alht
 
       - name: List disks
-        run: df -h
+        run: df -h ${{ env.WORKDIR }}
 
-      # - name: Setup Environment
-      #   run: |
-      #     echo "PATH=$PATH:$PWD/scripts" >> $GITHUB_ENV
-      #     echo "WORKDIR=/mnt" >> $GITHUB_ENV
-
-      - name: Register system and install packages
-        run: registerubi.sh '${{ secrets.RHDN_USER }}' '${{ secrets.RHDN_PASS }}'
-
-      - name: Set Dynamic Repo Names
-        id: set_repo
+      - name: Setup Environment
         run: |
-          export REPO=${{ matrix.repo }}
-          REPO=${REPO/matrix/${{ matrix.os }}}
-          echo -e "\nWorking on repo $REPO\n"
-          echo "REPO=$REPO" >> $GITHUB_ENV
-          echo "Build short repo name"
-          case $REPO in
-            *"baseos"*) SHORT_REPO="BaseOS${{ matrix.os }}" ;;
-            *"appstream"*) SHORT_REPO="AppStream${{ matrix.os }}" ;;
-            *"codeready-builder"*) SHORT_REPO="CRB${{ matrix.os }}" ;;
-            *"epel"*) SHORT_REPO="EPEL${{ matrix.os }}" ;;
-            *"docker-ce-stable"*) SHORT_REPO="Docker${{ matrix.os }}" ;;
-            *"microsoft-prod") SHORT_REPO="Microsoft-Prod${{ matrix.os }}" ;;
-            *"microsoft-edge") SHORT_REPO="Microsoft-Edge${{ matrix.os }}" ;;
-          esac
-          echo "SHORT_REPO=$SHORT_REPO"
-          echo "SHORT_REPO=$SHORT_REPO" >> $GITHUB_ENV
+          echo "PATH=$PATH:$PWD/scripts" >> $GITHUB_ENV
 
-      - name: Repo ${{ env.REPO }} Info
+      - name: Run Collection for ${{ vars.COLLECTOR }}
         run: |
-          echo -e "\nRepo ${{ env.REPO }} Info:\n"
-          dnf -y repoinfo ${{ env.REPO }} | tail -n +2
-
-      - name: Run Collection for ${{ env.REPO }}
-        run: |
-          echo "Collecting repo ${{ env.REPO }} RPMs"
-          reposync-all.sh ${{ env.REPO }}
+          cd ${{ env.WORKDIR }}
+          echo "Collecting ${{ vars.COLLECTOR }} APKs"
+          rsync-alpine.sh ${{ vars.COLLECTOR }} \
+            | tee ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.log
           echo "Logfile: $(ls -1Ssh *.log)"
 
       - name: Upload reposync log
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.REPO }}-${{ matrix.os }}-${{ needs.Date.outputs.Date }}.log
-          path: ${{ env.REPO }}.log
+          name: ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.log
+          path: ${{ env.WORKDIR }}/${{ vars.COLLECTOR }}.log
           if-no-files-found: error
-
-      - name: Unregister system
-        run: subscription-manager unregister
 
       - name: Show Consumption
         run: |
-          echo -e "Disk Usage $(du -chs ${{ env.REPO }})\n"
-          echo -e "Disk Space $(df -h )"
+          echo -e "Disk Usage $(du -chs ${{ env.WORKDIR }}/${{ vars.COLLECTOR }})\n"
+          echo -e "Disk Space $(df -h ${{ env.WORKDIR }}/)"
 
-      # - name: Copy README to ${{ env.REPO }} ISO
-      #   run: cp -v README.md ${{ env.REPO }}/
+      - name: Copy README to ${{ vars.COLLECTOR }} ISO
+        run: cp -v README.md ${{ env.WORKDIR }}/${{ vars.COLLECTOR }}/
 
-      - name: Repo Table of contents
+      - name: ISO Table of contents
         run: |
-          tree ${{ env.REPO }} \
-            | tee ${{ env.REPO }}/${{ env.REPO }}-${{ matrix.os }}-${{ needs.Date.outputs.Date }}.iso.txt
+          tree ${{ env.WORKDIR }} \
+            | tee ${{ env.WORKDIR }}/${{ env.REPO }}-${{ needs.Date.outputs.Date }}.iso.txt
 
       - name: Upload ISO ToC artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.REPO }}-${{ matrix.os }}-${{ needs.Date.outputs.Date }}.iso.txt
-          path: ${{ env.REPO }}/${{ env.REPO }}-${{ matrix.os }}-${{ needs.Date.outputs.Date }}.iso.txt
+          name: ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso.txt
+          path: ${{ env.WORKDIR }}/${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso.txt
           if-no-files-found: error
 
-      - name: Make ${{ env.REPO }} ISO
+      - name: Make ${{ vars.COLLECTOR }} ISO
         run: |
-          echo "Making ISOs of ${{ env.REPO }}"
-          chunkiso.sh ${{ env.REPO }} ${{ needs.Date.outputs.Date }}
+          echo "Making ISO of ${{ vars.COLLECTOR }}"
+          mkisofs -J -R -v -T -l \
+            -V ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }} \
+            -A ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }} \
+            -o ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso \
+            ${{ env.WORKDIR }}
+
+      - name: Implant MD5 sum into ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso
+        run: implantisomd5 /mnt/${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso
+
+      - name: Generate ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso Hash
+        run: |
+          cd ${{ env.WORKDIR }}
+          sha256sum -b ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso | tee \
+            ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso.sha
 
       - name: Show ISO & Hash
-        run: ls -sS1h *.iso*
+        run: ls -sS1h ${{ env.WORKDIR }}/*.iso*
 
-      - name: Upload ISO SHA artifacts
+      - name: Upload ISO
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.REPO }}-${{ matrix.os }}-${{ needs.Date.outputs.Date }}.iso.sha
-          path: "*.sha"
+          name: ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso
+          path: ${{ env.WORKDIR }}/${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso
           if-no-files-found: error
 
-      # Send Artifacts to Sharepoint
-      - name: Send ${{ env.REPO }} ISO artifacts to Sharepoint
-        uses: amentumcms/sharepoint-file-upload-action@main
+      - name: Upload ISO Hash
+        uses: actions/upload-artifact@v4
         with:
-          file_path: "*.iso*"
-          host_name: "${{ secrets.SHAREPOINT_HOST }}"
-          site_name: "${{ secrets.SHAREPOINT_SITE }}"
-          upload_path: "${{ secrets.SHAREPOINT_BASEPATH }}/${{ vars.COLLECTOR }}/${{ needs.Date.outputs.Date }}"
-          tenant_id: ${{ secrets.SHAREPOINT_TENANT_ID }}
-          client_id: ${{ secrets.SHAREPOINT_APP_ID }}
-          client_secret: ${{ secrets.SHAREPOINT_APP_SECRET }}
-          login_endpoint: "login.microsoftonline.us"
-          graph_endpoint: "graph.microsoft.us"
+          name: ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso.sha
+          path: ${{ env.WORKDIR }}/${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso.sha
 
       # Cleanup
       - name: Clean up
         run: |
           cd ${{ env.WORKDIR }}
-          echo "Remove ${{ env.REPO }}"
-          rm -rf ${{ env.REPO }}
+          echo "Remove ${{ vars.COLLECTOR }}"
+          rm -rf ${{ vars.COLLECTOR }}
           echo "Remove Artifacts"
-          rm -rfv ${{ env.REPO }}-${{ matrix.os }}-${{ needs.Date.outputs.Date }}*.iso
-          rm -rfv ${{ env.REPO }}-${{ matrix.os }}-${{ needs.Date.outputs.Date }}*.iso.sha
-          rm -rfv ${{ env.REPO }}-${{ matrix.os }}-${{ needs.Date.outputs.Date }}*.iso.txt
+          rm -rfv ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso
+          rm -rfv ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso.sha
+          rm -rfv ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso.txt
           echo "Done"
 
   # Release:
@@ -226,3 +175,48 @@ jobs:
   #         make_latest: true
   #         files: |
   #           /mnt/*.iso.*
+# Upload to Sharepoint Job
+  Sharepoint:
+    runs-on: ubuntu-24.04
+    needs: [Date, Collect-APKs]
+    permissions:
+      contents: write
+      pull-requests: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+
+      - name: Setup upload directory
+        run: |
+          echo "Create mnt directory and bindmount"
+          echo -e "\nUser ID:\n$(id)"
+          mkdir -p mnt
+          sudo mount --bind -o umask=022,gid=118,uid=1001 /mnt mnt
+          sudo chown -R runner:docker /mnt
+          # echo -e "\nFile Listing\n$(ls -alht mnt)"
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          pattern: "${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso*"
+          path: mnt
+
+      - name: List Artifacts
+        run: |
+          echo -e "\nDisk mounts:\n$(df -h|grep mnt)"
+          echo -e "\nFile Listing:\n$(ls -1sSh mnt/*.iso*)"
+
+      # Send Artifacts to Sharepoint
+      - name: Send ${{ env.REPO }} ISO artifacts to Sharepoint
+        uses: amentumcms/sharepoint-file-upload-action@main
+        with:
+          file_path: "mnt/*.iso*"
+          host_name: "${{ secrets.SHAREPOINT_HOST }}"
+          site_name: "${{ secrets.SHAREPOINT_SITE }}"
+          upload_path: "${{ secrets.SHAREPOINT_BASEPATH }}/${{ vars.COLLECTOR }}/${{ needs.Date.outputs.Date }}"
+          tenant_id: ${{ secrets.SHAREPOINT_TENANT_ID }}
+          client_id: ${{ secrets.SHAREPOINT_APP_ID }}
+          client_secret: ${{ secrets.SHAREPOINT_APP_SECRET }}
+          login_endpoint: "login.microsoftonline.us"
+          graph_endpoint: "graph.microsoft.us"

@@ -56,7 +56,20 @@ jobs:
           sudo chown -R $USER ${{ env.WORKDIR }}
           cd ${{ env.WORKDIR }}
           echo "Collecting ${{ vars.COLLECTOR }} APKs"
-          rsync-alpine.sh ${{ vars.COLLECTOR }}
+          # Rsync only the latest version and selected repos/arch
+          rsync \
+            --archive \
+            --update \
+            --hard-links \
+            --delete \
+            --delete-after \
+            --delay-updates \
+            --timeout=600 \
+            --include "v3.21/" \
+            --include "v3.21/main/" \
+            --include "v3.21/main/x86_64/" \
+            --exclude "*" \
+            rsync://rsync.alpinelinux.org/alpine/ .
 
       - name: Show Files
         run: ls -Alht ${{ env.WORKDIR }}

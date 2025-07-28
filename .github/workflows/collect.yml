@@ -86,8 +86,9 @@ jobs:
 
       - name: Show Consumption
         run: |
-          echo -e "Disk Usage $(du -chs ${{ env.WORKDIR }}/${{ vars.COLLECTOR }})\n"
-          echo -e "Disk Space $(df -h ${{ env.WORKDIR }}/)"
+          echo -e "Disk Usage:\n$(du -chs ${{ env.WORKDIR }})\n"
+          echo -e "Disk Space:\n$(df -h ${{ env.WORKDIR }})\n"
+          echo -e "File Listing:\n$(ls -alhS ${{ env.WORKDIR }}*)\n"
 
       - name: Copy README to ${{ vars.COLLECTOR }} ISO
         run: cp -v README.md ${{ env.WORKDIR }}
@@ -96,14 +97,14 @@ jobs:
         run: |
           cd ${{ env.WORKDIR }}
           tree ${{ vars.COLLECTOR }} \
-          | tee ${{ vars.COLLECTOR}}-${{ needs.Date.outputs.Date }}.iso.txt
-          cp -v ${{ vars.COLLECTOR}}-${{ needs.Date.outputs.Date }}.iso.txt ${{ vars.COLLECTOR }}
+          | tee ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso.txt
+          cp -v ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso.txt ${{ vars.COLLECTOR }}
 
       - name: Upload ISO ToC artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso.txt
-          path: ${{ env.WORKDIR }}/${{ vars.COLLECTOR }}/${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso.txt
+          path: ${{ env.WORKDIR }}/${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso.txt
           if-no-files-found: error
 
       - name: Make ${{ vars.COLLECTOR }} ISO
@@ -117,7 +118,7 @@ jobs:
             ${{ vars.COLLECTOR }}
 
       - name: Implant MD5 sum into ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso
-        run: implantisomd5 ${{ env.WORKDIR }}/${{ vars.COLLECTOR }}/${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso
+        run: implantisomd5 ${{ env.WORKDIR }}/${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso
 
       - name: Generate ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso Hash
         run: |
@@ -125,7 +126,7 @@ jobs:
           sha256sum -b ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso \
           | tee ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso.sha
 
-      - name: Show ISO & Hash
+      - name: Show ISO Files
         run: ls -sS1h ${{ env.WORKDIR }}/*.iso*
 
       - name: Upload ISO files

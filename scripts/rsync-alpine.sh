@@ -13,6 +13,7 @@ mkdir -p "$dest"
 /usr/bin/rsync \
   --archive \
   --update \
+  --log "$dest.log" \
   --hard-links \
   --delete \
   --delete-after \
@@ -21,6 +22,10 @@ mkdir -p "$dest"
   --include "v3.21/" \
   --include "v3.21/main/" \
   --include "v3.21/main/x86_64/" \
+  --exclude "*" \
+  "$src" "$dest"
+
+
   # --include "v3.21/community/" \
   # --include "v3.21/community/x86_64/" \
   # --include "latest-stable/" \
@@ -28,5 +33,3 @@ mkdir -p "$dest"
   # --include "latest-stable/main/x86_64/" \
   # --include "latest-stable/community/" \
   # --include "latest-stable/community/x86_64/" \
-  --exclude "*" \
-  "$src" "$dest"

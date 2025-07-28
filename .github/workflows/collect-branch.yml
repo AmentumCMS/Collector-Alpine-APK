@@ -58,8 +58,7 @@ jobs:
         run: |
           cd ${{ env.WORKDIR }}
           echo "Collecting ${{ vars.COLLECTOR }} APKs"
-          rsync-alpine.sh ${{ vars.COLLECTOR }} \
-            | tee ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.log
+          rsync-alpine.sh ${{ vars.COLLECTOR }}
           echo "Logfile: $(ls -1Ssh *.log)"
 
       - name: Upload reposync log

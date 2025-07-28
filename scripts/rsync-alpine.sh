@@ -11,7 +11,6 @@ src="rsync://rsync.alpinelinux.org/alpine/"
 /usr/bin/rsync \
   --archive \
   --update \
-  --log-file "rsync.log" \
   --hard-links \
   --delete \
   --delete-after \
@@ -24,6 +23,7 @@ src="rsync://rsync.alpinelinux.org/alpine/"
   "$src" "."
 
 
+  # --log-file "rsync.log" \
   # --include "v3.21/community/" \
   # --include "v3.21/community/x86_64/" \
   # --include "latest-stable/" \

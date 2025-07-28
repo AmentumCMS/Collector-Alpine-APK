@@ -1,5 +1,5 @@
 name: Alpine-APK-Collection (Branch)
-run-name: ${{ github.actor }} is Collecting New RPMs for ${{ github.ref_name }} 🚀
+run-name: ${{ github.actor }} is Collecting Main APKs for ${{ github.ref_name }} 🚀
 on:
   push:
     branches-ignore:

@@ -1,5 +1,5 @@
 name: Alpine-APK-Collection (Full)
-run-name: ${{ github.actor }} is Collecting New RPMs for ${{ github.ref_name }} 🚀
+run-name: ${{ github.actor }} is Collecting all APKs for ${{ github.ref_name }} 🚀
 on:
   workflow_dispatch:
 
@@ -144,7 +144,7 @@ jobs:
 
   # Release:
   #   runs-on: ubuntu-24.04
-  #   needs: [Date, Collect-RPMs]
+  #   needs: [Date, Collect-APKs]
   #   permissions:
   #     contents: write
   #     pull-requests: read

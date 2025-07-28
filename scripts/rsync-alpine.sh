@@ -7,7 +7,7 @@ lockfile="/tmp/alpine-mirror.lock"
 # Define source and destination
 src="rsync://rsync.alpinelinux.org/alpine/"
 
-# Rsync only the latest version and selected repos/arch
+# Rsync only the latest version and selected repos/archs
 rsync \
   --archive \
   --update \
@@ -16,16 +16,16 @@ rsync \
   --delete-after \
   --delay-updates \
   --timeout=600 \
-  --include "v3.21/" \
-  --include "v3.21/main/" \
-  --include "v3.21/main/x86_64/***" \
+  --include "v3.22/" \
+  --include "v3.22/main/" \
+  --include "v3.22/main/x86_64/***" \
   --exclude "*" \
   "$src" "."
 
 
   # --log-file "rsync.log" \
-  # --include "v3.21/community/" \
-  # --include "v3.21/community/x86_64/" \
+  # --include "v3.22/community/" \
+  # --include "v3.22/community/x86_64/" \
   # --include "latest-stable/" \
   # --include "latest-stable/main/" \
   # --include "latest-stable/main/x86_64/" \

@@ -13,7 +13,7 @@ mkdir -p "$dest"
 /usr/bin/rsync \
   --archive \
   --update \
-  --log "$dest.log" \
+  --log-file "$dest.log" \
   --hard-links \
   --delete \
   --delete-after \

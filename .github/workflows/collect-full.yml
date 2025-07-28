@@ -61,6 +61,7 @@ jobs:
             --include "v3.21/" \
             --include "v3.21/main/" \
             --include "v3.21/main/x86_64/***" \
+            --include "v3.21/community/x86_64/***" \
             --exclude "*" \
             rsync://rsync.alpinelinux.org/alpine ${{ env.WORKDIR }}/${{ vars.COLLECTOR }}
 
@@ -119,7 +120,7 @@ jobs:
           sha256sum -b ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso \
           | tee ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso.sha
 
-      - name: Show ISO & Hash
+      - name: Show ISO Files
         run: ls -sS1h ${{ env.WORKDIR }}/*.iso*
 
       - name: Upload ISO files

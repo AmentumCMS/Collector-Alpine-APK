@@ -33,7 +33,7 @@ jobs:
     runs-on: ubuntu-24.04
     env:
       GH_TOKEN: ${{ github.token }}
-      WORKDIR: /mnt
+      WORKDIR: /mnt/${{vars.COLLECTOR }}
 
     steps:
       - name: Check out repository code

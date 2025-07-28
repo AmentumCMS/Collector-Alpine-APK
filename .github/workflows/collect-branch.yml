@@ -1,0 +1,205 @@
+name: Alpine-APK-Collection (Branch)
+run-name: ${{ github.actor }} is Collecting New RPMs for ${{ github.ref_name }} 🚀
+on:
+  push:
+    branches-ignore:
+      - main
+  release:
+    types: [edited, released]
+  workflow_dispatch:
+
+jobs:
+  Date:
+    runs-on: ubuntu-24.04
+    outputs:
+      Date: ${{ steps.date.outputs.date }}
+    steps:
+      - name: Get current date
+        id: DATE
+        run: |
+          echo "Setting Date"
+          echo "DATE=$(date '+%Y%m%d-%H%M')" >> $GITHUB_OUTPUT
+          echo -e "\nWrote to file:\n$GITHUB_OUTPUT\n"
+          echo "Values:"
+          cat $GITHUB_OUTPUT
+
+      - name: Get disk space
+        id: DISK
+        run: |
+          echo -e "\nUser ID:\n$(id)"
+          df -h
+          echo -e "\nDisk List"
+          sudo fdisk -l | grep -i disk
+          echo -e "\nPermissions on /mnt"
+          ls -alht /mnt
+
+  Collect-APKs:
+    needs: [Date]
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+      WORKDIR: /mnt
+
+    steps:
+      - name: Check for dockerenv file
+        run: (ls /.dockerenv && echo Found dockerenv) || (echo No dockerenv)
+
+      - name: Check out repository code
+        uses: actions/checkout@v4
+
+      - name: Show Files
+        run: ls -Alht
+
+      - name: List disks
+        run: df -h ${{ env.WORKDIR }}
+
+      - name: Setup Environment
+        run: |
+          echo "PATH=$PATH:$PWD/scripts" >> $GITHUB_ENV
+          echo "WORKDIR=/mnt" >> $GITHUB_ENV
+
+      - name: Register system and install packages
+        run: registerubi.sh '${{ secrets.RHDN_USER }}' '${{ secrets.RHDN_PASS }}'
+
+
+      - name: Run Collection for ${{ vars.COLLECTOR }}
+        run: |
+          cd ${{ env.WORKDIR }}
+          echo "Collecting ${{ vars.COLLECTOR }} APKs"
+          rsync-alpine.sh ${{ vars.COLLECTOR }} \
+            | tee ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.log
+          echo "Logfile: $(ls -1Ssh *.log)"
+
+      - name: Upload reposync log
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.log
+          path: ${{ env.WORKDIR }}/${{ vars.COLLECTOR }}.log
+          if-no-files-found: error
+
+      - name: Unregister system
+        run: subscription-manager unregister
+
+      - name: Show Consumption
+        run: |
+          echo -e "Disk Usage $(du -chs ${{ env.WORKDIR }}/${{ vars.COLLECTOR }})\n"
+          echo -e "Disk Space $(df -h ${{ env.WORKDIR }}/)"
+
+      - name: Copy README to ${{ vars.COLLECTOR }} ISO
+        run: cp -v README.md ${{ env.WORKDIR }}/${{ vars.COLLECTOR }}/
+
+      - name: ISO Table of contents
+        run: |
+          tree ${{ env.WORKDIR }} \
+            | tee ${{ env.WORKDIR }}/${{ env.REPO }}-${{ needs.Date.outputs.Date }}.iso.txt
+
+      - name: Upload ISO ToC artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso.txt
+          path: ${{ env.WORKDIR }}/${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso.txt
+          if-no-files-found: error
+
+      - name: Make ${{ vars.COLLECTOR }} ISO
+        run: |
+          cd ${{ env.WORKDIR }}
+          echo "Making ISO of ${{ vars.COLLECTOR }}"
+          mkisofs -J -R -v -T -l \
+            -V ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }} \
+            -A ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }} \
+            -o ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso \
+            ${{ env.WORKDIR }}
+
+      - name: Implant MD5 sum into ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso
+        run: implantisomd5 /mnt/${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso
+
+      - name: Generate ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso Hash
+        run: |
+          cd ${{ env.WORKDIR }}
+          sha256sum -b ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso | tee \
+            ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso.sha
+
+      - name: Show ISO & Hash
+        run: ls -sS1h ${{ env.WORKDIR }}/*.iso*
+
+      - name: Upload ISO
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso
+          path: ${{ env.WORKDIR }}/${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso
+          if-no-files-found: error
+
+      - name: Upload ISO Hash
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso.sha
+          path: ${{ env.WORKDIR }}/${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso.sha
+
+      # Cleanup
+      - name: Clean up
+        run: |
+          cd ${{ env.WORKDIR }}
+          echo "Remove ${{ vars.COLLECTOR }}"
+          rm -rf ${{ vars.COLLECTOR }}
+          echo "Remove Artifacts"
+          rm -rfv ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso
+          rm -rfv ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso.sha
+          rm -rfv ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso.txt
+          echo "Done"
+
+  Release:
+    runs-on: ubuntu-24.04
+    needs: [Date, Collect-APKs, Sharepoint]
+    permissions:
+      contents: write
+      pull-requests: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          pattern: "*.iso.*"
+
+      - name: Show Artifacts
+        run: ls -sS1h *.iso.*
+
+      # Section to actually create a release
+
+  # Upload to Sharepoint Job
+  Sharepoint:
+    runs-on: ubuntu-24.04
+    needs: [Date, Collect-APKs]
+    permissions:
+      contents: write
+      pull-requests: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+
+      - name: Setup upload directory
+        run: |
+          echo "Create mnt directory and bindmount"
+          echo -e "\nUser ID:\n$(id)"
+          mkdir -p mnt
+          sudo mount --bind -o umask=022,gid=118,uid=1001 /mnt mnt
+          sudo chown -R runner:docker /mnt
+          # echo -e "\nFile Listing\n$(ls -alht mnt)"
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          pattern: "${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso*"
+          path: mnt
+
+      - name: List Artifacts
+        run: |
+          echo -e "\nDisk mounts:\n$(df -h|grep mnt)"
+          echo -e "\nFile Listing:\n$(ls -1sSh mnt/*.iso*)"
+
+      # Send Artifacts to Sharepoint

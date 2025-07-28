@@ -7,8 +7,8 @@ lockfile="/tmp/alpine-mirror.lock"
 # Define source and destination
 src="rsync://rsync.alpinelinux.org/alpine/"
 
-# Rsync only the latest version and selected repos/archs
-/usr/bin/rsync \
+# Rsync only the latest version and selected repos/arch
+rsync \
   --archive \
   --update \
   --hard-links \

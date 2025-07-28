@@ -54,7 +54,7 @@ jobs:
           sudo chown -R $USER ${{ env.WORKDIR }}
           cd ${{ env.WORKDIR }}
           echo "Collecting ${{ vars.COLLECTOR }} APKs"
-          rsync-alpine.sh ${{ vars.COLLECTOR }}   echo "Logfile: $(ls -1Ssh *.log)"
+          rsync-alpine.sh ${{ vars.COLLECTOR }}
 
       - name: Show Files
         run: ls -Alht ${{ env.WORKDIR }}
@@ -75,12 +75,12 @@ jobs:
           echo -e "Disk Space $(df -h ${{ env.WORKDIR }}/)"
 
       - name: Copy README to ${{ vars.COLLECTOR }} ISO
-        run: cp -v README.md ${{ env.WORKDIR }}/${{ vars.COLLECTOR }}/
+        run: cp -v README.md ${{ env.WORKDIR }}
 
       - name: ISO Table of contents
         run: |
           tree ${{ env.WORKDIR }} \
-            | tee ${{ env.WORKDIR }}/${{ env.REPO }}-${{ needs.Date.outputs.Date }}.iso.txt
+            | tee ${{ env.WORKDIR }}/${{ vars.COLLECTOR}}-${{ needs.Date.outputs.Date }}.iso.txt
 
       - name: Upload ISO ToC artifact
         uses: actions/upload-artifact@v4

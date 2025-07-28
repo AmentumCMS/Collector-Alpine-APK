@@ -18,7 +18,7 @@ rsync \
   --timeout=600 \
   --include "v3.21/" \
   --include "v3.21/main/" \
-  --include "v3.21/main/x86_64/" \
+  --include "v3.21/main/x86_64/***" \
   --exclude "*" \
   "$src" "."
 

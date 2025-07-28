@@ -6,14 +6,12 @@ lockfile="/tmp/alpine-mirror.lock"
 
 # Define source and destination
 src="rsync://rsync.alpinelinux.org/alpine/"
-dest=${WORKDIR}
-mkdir -p "$dest"
 
 # Rsync only the latest version and selected repos/archs
 /usr/bin/rsync \
   --archive \
   --update \
-  --log-file "$dest.log" \
+  --log-file "rsync.log" \
   --hard-links \
   --delete \
   --delete-after \
@@ -23,7 +21,7 @@ mkdir -p "$dest"
   --include "v3.21/main/" \
   --include "v3.21/main/x86_64/" \
   --exclude "*" \
-  "$src" "$dest"
+  "$src" "."
 
 
   # --include "v3.21/community/" \
